@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import LandingPage from "./pages/LandingPage";
 import ResearchLandingPage from "./pages/ResearchLandingPage";
 import ResearchReportPage from "./pages/ResearchReportPage";
 import AllResearchPage from "./pages/AllResearchPage";
@@ -17,20 +18,23 @@ function App() {
         toastOptions={{
           duration: 3000,
           style: {
-            background: '#171717',
+            background: '#18181b',
             color: '#e5e5e5',
-            border: '1px solid #404040',
-            borderRadius: '8px',
+            border: '1px solid #27272a',
+            borderRadius: '12px',
             padding: '16px',
           },
-          success: { duration: 3000, iconTheme: { primary: '#10b981', secondary: '#fff' } },
+          success: { duration: 3000, iconTheme: { primary: '#10b981', secondary: '#000' } },
           error: { duration: 4000, iconTheme: { primary: '#ef4444', secondary: '#fff' } },
         }}
       />
-      <div className="min-h-screen bg-[#0A0A0A]">
+      <div className="min-h-screen bg-black">
         <Routes>
+          {/* Main Landing Page */}
+          <Route path="/" element={<LandingPage />} />
+
           {/* AI Research Engine */}
-          <Route path="/" element={<ResearchLandingPage />} />
+          <Route path="/research" element={<ResearchLandingPage />} />
           <Route path="/research/:id" element={<ResearchReportPage />} />
           <Route path="/research-list" element={<AllResearchPage />} />
 

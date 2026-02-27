@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useArticleStore } from "../stores/articleStore";
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { useAccount, useReadContract, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
@@ -9,8 +9,8 @@ import {
 import toast from "react-hot-toast";
 import axios from "axios";
 import { 
-  Menu, X, Star, Award, Link2, Layers, Check, ChevronRight, 
-  Brain, FileText, LogOut, Wallet
+  Menu, X, Star, Award, Check, 
+  Brain, FileText, LogOut, Wallet, Link2, Scale, Hexagon
 } from "lucide-react";
 
 const API_BASE = '/api';
@@ -20,20 +20,28 @@ export default function Navbar() {
   const [newName, setNewName] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [savingToDb, setSavingToDb] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
   
   const location = useLocation();
+  const navigate = useNavigate();
   const isActive = (path) => location.pathname === path;
    
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
-  const chainId = useChainId(); // <--- ADD THIS
+  const chainId = useChainId();
 
-  // Dynamically select the correct addresses based on the connected chain
-  // Fallback to a default chain ID (e.g., Arbitrum Sepolia 421614) if undefined
   const currentContractAddress = CONTRACT_ADDRESSES[chainId] || CONTRACT_ADDRESSES[421614];
   const currentTokenAddress = WUPToken_ADDRESSES[chainId] || WUPToken_ADDRESSES[421614];
   const currentClaimerAddress = WUPClaimer_ADDRESSES[chainId] || WUPClaimer_ADDRESSES[421614];
   const { open } = useWeb3Modal();
+
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const { data: pointsData, refetch: refetchPoints } = useReadContract({
     abi: WRAPUP_ABI,
@@ -59,16 +67,14 @@ export default function Navbar() {
     enabled: isConnected && !!address && !!currentTokenAddress,  
   });
 
-  // NEW: Read how many points the user has already claimed
   const { data: claimedPointsData, refetch: refetchClaimedPoints } = useReadContract({
     address: currentClaimerAddress,
-    abi: WUP_CLAIMER_ABI, // (Make sure this matches whatever you exported from wagmiConfig)
+    abi: WUP_CLAIMER_ABI,
     functionName: 'claimedPoints',
     args: [address],
     enabled: isConnected && !!address,
   });
   
-  // Calculate how many points they can currently claim
   const claimablePoints = (userPoints || 0) - (Number(claimedPointsData) || 0);
 
   const { data: hash, isPending, writeContract, error: writeError, isError: isWriteError } = useWriteContract();
@@ -144,7 +150,6 @@ export default function Navbar() {
     }
   };
 
-  // Watch for blockchain transaction status
   useEffect(() => {
     if (isConfirming) {
       toast.loading("Setting name on blockchain...", { id: "setNameToast" });
@@ -162,18 +167,16 @@ export default function Navbar() {
   }, [isConfirming, isConfirmed, isWriteError, writeError, isReceiptError, receiptError]);
 
   const handleClaim = async () => {
-
     if (!currentClaimerAddress) {
-    toast.error('Claiming is not supported on this network!');
-    return;
-  }
+      toast.error('Claiming is not supported on this network!');
+      return;
+    }
     if (claimablePoints <= 0) {
       toast.error('You have no points to claim!');
       return;
     }
     
     toast.loading('Confirm in your wallet...', { id: 'claim_toast' });
-
     claimRewards({
       address: currentClaimerAddress,
       abi: WUP_CLAIMER_ABI,
@@ -191,6 +194,7 @@ export default function Navbar() {
       refetchPoints();
     }
   }, [isConfirmingClaim, isClaimConfirmed, refetchWupBalance, refetchClaimedPoints, refetchPoints]);
+
   const handleWalletAction = () => {
     if (isConnected) disconnect();
     else open(); 
@@ -206,7 +210,6 @@ export default function Navbar() {
       return;
     }
 
-    // 1. Save to Database First
     toast.loading("Saving to database...", { id: "setNameToast" });
     const dbSaved = await saveDisplayNameToDb(newName.trim(), address);
 
@@ -215,7 +218,6 @@ export default function Navbar() {
       return;
     }
 
-    // 2. If DB is successful, trigger Blockchain Transaction
     toast.loading("Database updated! Confirm in wallet...", { id: "setNameToast" });
     writeContract({
       address: currentContractAddress,
@@ -225,73 +227,213 @@ export default function Navbar() {
     });
   };
 
-  // NEW: Disable button if they have no NEW points to claim
   const isClaimButtonDisabled = isClaiming || isConfirmingClaim || claimablePoints <= 0;
    
   const claimButtonText = () => {
     if (isClaiming) return 'Check Wallet...';
     if (isConfirmingClaim) return 'Confirming...';
     if (claimablePoints <= 0) return 'No Points';
-    return 'Claim $WUP'; // Changed to WUP
+    return 'Claim $WUP';
   };
 
+  const toolLinks = [
+    { path: '/research', label: 'Research', icon: Brain },
+    { path: '/compare', label: 'Compare', icon: Scale },
+    { path: '/legacy', label: 'Curate', icon: Link2 },
+  ];
+
+  const navLinks = [
+    { path: '/curated', label: 'Articles', icon: FileText },
+    { path: '/research-list', label: 'Reports', icon: Hexagon },
+  ];
+
   return (
-    <nav className="bg-[#09090b]/80 border-b border-[#27272a] sticky top-0 z-50 backdrop-blur-md supports-[backdrop-filter]:bg-[#09090b]/60">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className={`sticky top-0 z-50 transition-all duration-300 ${
+      isScrolled 
+        ? 'bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/50 shadow-xl shadow-black/20' 
+        : 'bg-transparent border-b border-transparent'
+    }`}>
+      <div className="w-full px-18 sm:px-10 lg:px-24 xl:px-28">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform duration-300 group-hover:rotate-180 bg-black">
-              <img src="/logo.png" alt="logo" width={40} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-zinc-900 border border-zinc-800 group-hover:border-emerald-500/50 transition-all duration-300 overflow-hidden">
+              <img src="/logo.png" alt="logo" className="w-full h-full object-cover" />
             </div>
             <span className="text-xl font-bold text-white tracking-tight">
-              Wrap-Up
+              Wrap<span className="text-emerald-400">-Up</span>
             </span>
           </Link>
            
           {/* Mobile menu button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 rounded-md hover:bg-[#27272a] text-zinc-400 hover:text-white transition-colors"
+            className="lg:hidden p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all"
           >
-            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-4">
-            {/* Desktop Navigation links — replace the existing link group */}
-          <Link
-            to="/research-list"
-            className={`flex items-center gap-2 text-sm font-medium transition-colors ${
-              isActive('/research-list') ? 'text-[#10b981]' : 'text-zinc-400 hover:text-white'
-            }`}
+          <div className="hidden lg:flex items-center gap-2 relative">
+  
+          {/* Tools Dropdown */}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsToolsOpen(true)}
+            onMouseLeave={() => setIsToolsOpen(false)}
           >
-            <Brain className="w-4 h-4" />
-            Research
-          </Link>
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all">
+              <Brain className="w-4 h-4" />
+              Tools
+            </button>
 
-          <Link
-            to="/curated"
-            className={`flex items-center gap-2 text-sm font-medium transition-colors ${
-              isActive('/curated') ? 'text-[#10b981]' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            Articles
-          </Link>
-            
+            {isToolsOpen && (
+              <div className="absolute top-full mt-2 w-52 bg-zinc-950 border border-zinc-800 rounded-2xl shadow-xl p-2 animate-fade-in">
+                {toolLinks.map(({ path, label, icon: Icon }) => (
+                  <Link
+                    key={path}
+                    to={path}
+                    className="flex items-center gap-3 px-4 py-2 rounded-xl text-sm text-zinc-400 hover:bg-zinc-800 hover:text-emerald-400 transition-all"
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Other Nav Links */}
+          {navLinks.map(({ path, label, icon: Icon }) => (
+            <Link
+              key={path}
+              to={path}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                isActive(path)
+                  ? 'text-emerald-400 bg-emerald-500/10'
+                  : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </Link>
+          ))}
+        </div>
+
+          {/* Right Section */}
+          <div className="hidden lg:flex items-center gap-3">
             {isConnected && (
-              <div className="flex items-center gap-4 pl-4 border-l border-[#27272a]">
-                <div className="flex items-center gap-4 bg-[#121214] border border-[#27272a] rounded-lg px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-4 h-4 text-[#10b981]" />
+              <>
+                {/* Stats */}
+                <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2">
+                  <div className="flex items-center gap-2 pr-3 border-r border-zinc-700">
+                    <Star className="w-4 h-4 text-emerald-500" />
                     <span className="text-white text-sm font-bold">{userPoints}</span>
                   </div>
-                  <div className="w-px h-4 bg-[#27272a]"></div>
-                  <div className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-[#10b981]" />
+                  <div className="flex items-center gap-2 pl-3">
+                    <Award className="w-4 h-4 text-emerald-500" />
                     <span className="text-white text-sm font-bold">
-                        {wupBalance !== undefined ? (Number(wupBalance) / 1e18).toFixed(2) : '0.00'}
+                      {wupBalance !== undefined ? (Number(wupBalance) / 1e18).toFixed(2) : '0.00'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Claim Button */}
+                <button
+                  onClick={handleClaim}
+                  disabled={isClaimButtonDisabled}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-wide transition-all duration-200 ${
+                    isClaimButtonDisabled
+                      ? 'bg-zinc-900 text-zinc-600 cursor-not-allowed border border-zinc-800'
+                      : 'bg-emerald-500 text-black hover:bg-emerald-400 shadow-lg shadow-emerald-500/20'
+                  }`}
+                >
+                  {claimButtonText()}
+                </button>
+
+                {/* Display Name */}
+                {displayName ? (
+                  <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-xl">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                    <span className="text-sm font-medium text-white">{displayName}</span>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Name"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSetDisplayName()}
+                      className="px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 text-sm w-28"
+                      disabled={isPending || isConfirming || savingToDb}
+                    />
+                    <button
+                      onClick={handleSetDisplayName}
+                      disabled={isPending || isConfirming || savingToDb}
+                      className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-xl text-white transition-colors"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                <w3m-network-button />
+              </>
+            )}
+            
+            {/* Wallet Button */}
+            <button
+              onClick={handleWalletAction}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 flex items-center gap-2 ${
+                isConnected
+                  ? 'bg-zinc-900 border border-zinc-800 text-white hover:border-red-500/50 hover:text-red-400' 
+                  : 'bg-white text-black hover:bg-emerald-400'
+              }`}
+            >
+              {isConnected ? (
+                <>
+                  <Wallet className="w-4 h-4" />
+                  {`${address.substring(0, 6)}...${address.substring(address.length - 4)}`}
+                </>
+              ) : (
+                <>
+                  <Wallet className="w-4 h-4" />
+                  Connect
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden pb-6 pt-4 space-y-2 border-t border-zinc-800 animate-fade-in">
+            {navLinks.map(({ path, label, icon: Icon }) => (
+              <Link 
+                key={path}
+                to={path} 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all ${
+                  isActive(path) ? 'bg-emerald-500/10 text-emerald-400' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                {label}
+              </Link>
+            ))}
+            
+            {isConnected && (
+              <div className="space-y-3 pt-4 border-t border-zinc-800">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800 flex items-center justify-between">
+                    <span className="text-zinc-500 text-xs uppercase">Points</span>
+                    <span className="text-emerald-400 font-bold">{userPoints}</span>
+                  </div>
+                  <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800 flex items-center justify-between">
+                    <span className="text-zinc-500 text-xs uppercase">$WUP</span>
+                    <span className="text-emerald-400 font-bold">
+                      {wupBalance !== undefined ? (Number(wupBalance) / 1e18).toFixed(2) : '0.00'}
                     </span>
                   </div>
                 </div>
@@ -299,117 +441,18 @@ export default function Navbar() {
                 <button
                   onClick={handleClaim}
                   disabled={isClaimButtonDisabled}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wide transition-all ${
+                  className={`w-full py-3 rounded-xl text-sm font-bold uppercase tracking-wide ${
                     isClaimButtonDisabled
-                      ? 'bg-[#18181b] text-zinc-600 cursor-not-allowed border border-[#27272a]'
-                      : 'bg-[#10b981] text-black hover:bg-[#059669] hover:text-white'
+                      ? 'bg-zinc-900 text-zinc-600 border border-zinc-800'
+                      : 'bg-emerald-500 text-black hover:bg-emerald-400'
                   }`}
                 >
                   {claimButtonText()}
                 </button>
 
                 {displayName ? (
-                  <div className="flex items-center gap-2 bg-[#121214] border border-[#27272a] px-4 py-2 rounded-lg">
-                    <div className="w-2 h-2 bg-[#10b981] rounded-full"></div>
-                    <span className="text-sm font-medium text-white">{displayName}</span>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Display Name"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSetDisplayName()}
-                      className="px-3 py-2 rounded-lg bg-[#121214] border border-[#27272a] text-white placeholder-zinc-600 focus:outline-none focus:border-[#10b981] text-sm w-32"
-                      disabled={isPending || isConfirming || savingToDb}
-                    />
-                    <button
-                      onClick={handleSetDisplayName}
-                      disabled={isPending || isConfirming || savingToDb}
-                      className="bg-[#27272a] hover:bg-[#3f3f46] px-3 py-2 rounded-lg text-white"
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-            {/* Add the network switcher here so it only shows when connected */}
-            {isConnected && <w3m-network-button />}
-            
-            <button
-              onClick={handleWalletAction}
-              className={`px-5 py-2.5 rounded-lg text-sm font-bold border transition-all flex items-center gap-2 ml-2 ${
-                isConnected
-                  ? 'bg-transparent border-[#27272a] text-white hover:border-red-500 hover:text-red-500' 
-                  : 'bg-white border-white text-black hover:bg-zinc-200'
-              }`}
-            >
-              {!isConnected && <Link2 className="w-4 h-4" />}
-              {isConnected 
-                ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` 
-                : 'Connect Wallet'
-              }
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
-          <div className="lg:hidden pb-6 pt-4 space-y-4 border-t border-[#27272a]">
-            <Link 
-              to="/research-list" 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={`flex items-center gap-2 px-3 py-3 mx-3 rounded-lg text-base font-medium transition-all ${
-                isActive('/research-list') ? 'bg-[#18181b] text-[#10b981]' : 'text-zinc-400 hover:bg-[#18181b] hover:text-white'
-              }`}
-            >
-              <Brain className="w-5 h-5" />
-              Research
-            </Link>
-
-            <Link 
-              to="/curated" 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={`flex items-center gap-2 px-3 py-3 mx-3 rounded-lg text-base font-medium transition-all ${
-                isActive('/curated') ? 'bg-[#18181b] text-[#10b981]' : 'text-zinc-400 hover:bg-[#18181b] hover:text-white'
-              }`}
-            >
-              <FileText className="w-5 h-5" />
-              Curated Articles
-            </Link>
-            
-            {isConnected && (
-              <div className="space-y-4 px-3 border-t border-[#27272a] pt-4 mx-3">
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-[#121214] p-3 rounded-lg border border-[#27272a] flex items-center justify-between">
-                        <span className="text-zinc-500 text-xs uppercase">Points</span>
-                        <span className="text-[#10b981] font-bold">{userPoints}</span>
-                    </div>
-                    <div className="bg-[#121214] p-3 rounded-lg border border-[#27272a] flex items-center justify-between">
-                        <span className="text-zinc-500 text-xs uppercase">$WUP</span>
-                        <span className="text-[#10b981] font-bold">
-                            {wupBalance !== undefined ? (Number(wupBalance) / 1e18).toFixed(2) : '0.00'}
-                        </span>
-                    </div>
-                </div>
-
-                <button
-                  onClick={handleClaim}
-                  disabled={isClaimButtonDisabled}
-                  className={`w-full py-3 rounded-lg text-sm font-bold uppercase tracking-wide ${
-                    isClaimButtonDisabled
-                      ? 'bg-[#18181b] text-zinc-600 border border-[#27272a]'
-                      : 'bg-[#10b981] text-black hover:bg-[#059669]'
-                  }`}
-                >
-                  {claimButtonText()}
-                </button>
-
-                {displayName ? (
-                  <div className="flex items-center gap-2 bg-[#121214] border border-[#27272a] px-4 py-3 rounded-lg">
-                    <div className="w-2 h-2 bg-[#10b981] rounded-full"></div>
+                  <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-4 py-3 rounded-xl">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
                     <span className="text-sm font-medium text-white">{displayName}</span>
                   </div>
                 ) : (
@@ -419,13 +462,13 @@ export default function Navbar() {
                       placeholder="Set Display Name"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded-lg bg-[#121214] border border-[#27272a] text-white focus:outline-none focus:border-[#10b981]"
+                      className="flex-1 px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-white focus:outline-none focus:border-emerald-500/50"
                       disabled={isPending || isConfirming || savingToDb}
                     />
                     <button 
                       onClick={handleSetDisplayName} 
                       disabled={isPending || isConfirming || savingToDb} 
-                      className="bg-[#27272a] hover:bg-[#3f3f46] px-4 rounded-lg text-white"
+                      className="bg-zinc-800 hover:bg-zinc-700 px-4 rounded-xl text-white"
                     >
                       Save
                     </button>
@@ -439,10 +482,10 @@ export default function Navbar() {
                 handleWalletAction();
                 setIsMobileMenuOpen(false);
               }}
-              className={`w-full max-w-[calc(100%-1.5rem)] mx-3 mt-2 px-4 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${
+              className={`w-full mt-2 px-4 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 ${
                 isConnected
-                  ? 'bg-[#18181b] text-white border border-[#27272a] hover:border-red-500 hover:text-red-500' 
-                  : 'bg-white text-black hover:bg-zinc-200'
+                  ? 'bg-zinc-900 text-white border border-zinc-800 hover:border-red-500/50 hover:text-red-400' 
+                  : 'bg-white text-black hover:bg-emerald-400'
               }`}
             >
               {isConnected ? (
