@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useArticleStore } from "../stores/articleStore";
 import { useWeb3Modal } from '@web3modal/wagmi/react';
@@ -10,7 +10,7 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import { 
   Menu, X, Star, Award, Check, 
-  Brain, FileText, LogOut, Wallet, Link2, Scale, Hexagon
+  Brain, FileText, LogOut, Wallet, Link2, Scale, Hexagon, ChevronDown, Zap
 } from "lucide-react";
 
 const API_BASE = '/api';
@@ -22,6 +22,10 @@ export default function Navbar() {
   const [savingToDb, setSavingToDb] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [isRewardsOpen, setIsRewardsOpen] = useState(false);
+
+  const toolsCloseTimer = useRef(null);
+  const rewardsCloseTimer = useRef(null);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -36,7 +40,6 @@ export default function Navbar() {
   const currentClaimerAddress = WUPClaimer_ADDRESSES[chainId] || WUPClaimer_ADDRESSES[421614];
   const { open } = useWeb3Modal();
 
-  // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
@@ -247,6 +250,23 @@ export default function Navbar() {
     { path: '/research-list', label: 'Reports', icon: Hexagon },
   ];
 
+  // Hover helpers with delay to prevent accidental close
+  const handleToolsEnter = () => {
+    if (toolsCloseTimer.current) clearTimeout(toolsCloseTimer.current);
+    setIsToolsOpen(true);
+  };
+  const handleToolsLeave = () => {
+    toolsCloseTimer.current = setTimeout(() => setIsToolsOpen(false), 150);
+  };
+
+  const handleRewardsEnter = () => {
+    if (rewardsCloseTimer.current) clearTimeout(rewardsCloseTimer.current);
+    setIsRewardsOpen(true);
+  };
+  const handleRewardsLeave = () => {
+    rewardsCloseTimer.current = setTimeout(() => setIsRewardsOpen(false), 150);
+  };
+
   return (
     <nav className={`sticky top-0 z-50 transition-all duration-300 ${
       isScrolled 
@@ -255,12 +275,13 @@ export default function Navbar() {
     }`}>
       <div className="w-full px-18 sm:px-10 lg:px-24 xl:px-28">
         <div className="flex items-center justify-between h-20">
+
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-zinc-900 border border-zinc-800 group-hover:border-emerald-500/50 transition-all duration-300 overflow-hidden">
               <img src="/logo.png" alt="logo" className="w-full h-full object-cover" />
             </div>
-            <span className="text-xl font-bold text-white tracking-tight">
+            <span className="text-xl font-bold text-white tracking-tight whitespace-nowrap">
               Wrap<span className="text-emerald-400">-Up</span>
             </span>
           </Link>
@@ -276,80 +297,130 @@ export default function Navbar() {
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-2 relative">
   
-          {/* Tools Dropdown */}
-          <div
-            className="relative"
-            onMouseEnter={() => setIsToolsOpen(true)}
-            onMouseLeave={() => setIsToolsOpen(false)}
-          >
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all">
-              <Brain className="w-4 h-4" />
-              Tools
-            </button>
-
-            {isToolsOpen && (
-              <div className="absolute top-full mt-2 w-52 bg-zinc-950 border border-zinc-800 rounded-2xl shadow-xl p-2 animate-fade-in">
-                {toolLinks.map(({ path, label, icon: Icon }) => (
-                  <Link
-                    key={path}
-                    to={path}
-                    className="flex items-center gap-3 px-4 py-2 rounded-xl text-sm text-zinc-400 hover:bg-zinc-800 hover:text-emerald-400 transition-all"
-                  >
-                    <Icon className="w-4 h-4" />
-                    {label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Other Nav Links */}
-          {navLinks.map(({ path, label, icon: Icon }) => (
-            <Link
-              key={path}
-              to={path}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                isActive(path)
-                  ? 'text-emerald-400 bg-emerald-500/10'
-                  : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
-              }`}
+            {/* Tools Dropdown */}
+            <div
+              className="relative"
+              onMouseEnter={handleToolsEnter}
+              onMouseLeave={handleToolsLeave}
             >
-              <Icon className="w-4 h-4" />
-              {label}
-            </Link>
-          ))}
-        </div>
+              <button className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                isToolsOpen ? 'text-white bg-zinc-800/50' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+              }`}>
+                <Brain className="w-4 h-4" />
+                Tools
+                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isToolsOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isToolsOpen && (
+                <div className="absolute top-full left-0 w-52 bg-zinc-950 border border-zinc-800 rounded-2xl shadow-xl p-2 z-50"
+                  style={{ marginTop: '4px' }}
+                  onMouseEnter={handleToolsEnter}
+                  onMouseLeave={handleToolsLeave}
+                >
+                  {/* invisible bridge to prevent gap-triggered close */}
+                  <div className="absolute -top-1 left-0 right-0 h-2" />
+                  {toolLinks.map(({ path, label, icon: Icon }) => (
+                    <Link
+                      key={path}
+                      to={path}
+                      onClick={() => setIsToolsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-zinc-400 hover:bg-zinc-800 hover:text-emerald-400 transition-all"
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Other Nav Links */}
+            {navLinks.map(({ path, label, icon: Icon }) => (
+              <Link
+                key={path}
+                to={path}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  isActive(path)
+                    ? 'text-emerald-400 bg-emerald-500/10'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </Link>
+            ))}
+          </div>
 
           {/* Right Section */}
           <div className="hidden lg:flex items-center gap-3">
             {isConnected && (
               <>
-                {/* Stats */}
-                <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2">
-                  <div className="flex items-center gap-2 pr-3 border-r border-zinc-700">
-                    <Star className="w-4 h-4 text-emerald-500" />
-                    <span className="text-white text-sm font-bold">{userPoints}</span>
-                  </div>
-                  <div className="flex items-center gap-2 pl-3">
-                    <Award className="w-4 h-4 text-emerald-500" />
-                    <span className="text-white text-sm font-bold">
-                      {wupBalance !== undefined ? (Number(wupBalance) / 1e18).toFixed(2) : '0.00'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Claim Button */}
-                <button
-                  onClick={handleClaim}
-                  disabled={isClaimButtonDisabled}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-wide transition-all duration-200 ${
-                    isClaimButtonDisabled
-                      ? 'bg-zinc-900 text-zinc-600 cursor-not-allowed border border-zinc-800'
-                      : 'bg-emerald-500 text-black hover:bg-emerald-400 shadow-lg shadow-emerald-500/20'
-                  }`}
+                {/* Earnings Dropdown */}
+                <div
+                  className="relative"
+                  onMouseEnter={handleRewardsEnter}
+                  onMouseLeave={handleRewardsLeave}
                 >
-                  {claimButtonText()}
-                </button>
+                  <button className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 border ${
+                    claimablePoints > 0
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                      : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-600'
+                  }`}>
+                    <Zap className={`w-4 h-4 ${claimablePoints > 0 ? 'text-emerald-400' : 'text-zinc-500'}`} />
+                    Earnings
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isRewardsOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isRewardsOpen && (
+                    <div
+                      className="absolute top-full right-0 w-60 bg-zinc-950 border border-zinc-800 rounded-2xl shadow-xl z-50 overflow-hidden"
+                      style={{ marginTop: '4px' }}
+                      onMouseEnter={handleRewardsEnter}
+                      onMouseLeave={handleRewardsLeave}
+                    >
+                      {/* invisible bridge */}
+                      <div className="absolute -top-1 left-0 right-0 h-2" />
+                      <div className="p-3 space-y-1">
+                        <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-zinc-900">
+                          <div className="flex items-center gap-2 text-zinc-400 text-xs uppercase tracking-wide">
+                            <Star className="w-3.5 h-3.5 text-emerald-500" />
+                            Total Points
+                          </div>
+                          <span className="text-white font-bold text-sm">{userPoints}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-zinc-900">
+                          <div className="flex items-center gap-2 text-zinc-400 text-xs uppercase tracking-wide">
+                            <Award className="w-3.5 h-3.5 text-emerald-500" />
+                            $WUP Balance
+                          </div>
+                          <span className="text-white font-bold text-sm">
+                            {wupBalance !== undefined ? (Number(wupBalance) / 1e18).toFixed(2) : '0.00'}
+                          </span>
+                        </div>
+
+                        {claimablePoints > 0 && (
+                          <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                            <span className="text-emerald-400 text-xs uppercase tracking-wide font-medium">Claimable</span>
+                            <span className="text-emerald-400 font-bold text-sm">{claimablePoints} pts</span>
+                          </div>
+                        )}
+
+                        <button
+                          onClick={handleClaim}
+                          disabled={isClaimButtonDisabled}
+                          className={`w-full mt-1 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wide transition-all duration-200 ${
+                            isClaimButtonDisabled
+                              ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                              : 'bg-emerald-500 text-black hover:bg-emerald-400 shadow-lg shadow-emerald-500/20'
+                          }`}
+                        >
+                          {claimButtonText()}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Display Name */}
                 {displayName ? (
@@ -409,6 +480,19 @@ export default function Navbar() {
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
           <div className="lg:hidden pb-6 pt-4 space-y-2 border-t border-zinc-800 animate-fade-in">
+            {toolLinks.map(({ path, label, icon: Icon }) => (
+              <Link 
+                key={path}
+                to={path}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all ${
+                  isActive(path) ? 'bg-emerald-500/10 text-emerald-400' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                {label}
+              </Link>
+            ))}
             {navLinks.map(({ path, label, icon: Icon }) => (
               <Link 
                 key={path}
