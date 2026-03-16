@@ -1,21 +1,6 @@
 import React from "react";
-import { useReadContract } from 'wagmi';
-import { WRAPUP_ABI, CONTRACT_ADDRESSES } from '../wagmiConfig';
 
 export default function ArticleCard({ article }) {
-  // Fetch the AI Score directly from Tenderly using Wagmi
-  // This polls every 5 seconds so the UI updates the moment Chainlink finishes!
-  const { data: aiScore } = useReadContract({
-    address: CONTRACT_ADDRESSES[9991],
-    abi: WRAPUP_ABI,
-    functionName: 'articleAIScores',
-    args: article.articleId ? [article.articleId] : undefined,
-    query: {
-      enabled: !!article.articleId,
-      refetchInterval: 5000, 
-    }
-  });
-
   return (
     <div className="group relative flex flex-col h-full bg-[#121214] border border-[#27272a] rounded-xl overflow-hidden hover:border-[#10b981] transition-all duration-300 ease-out hover:-translate-y-1">
       {/* Image Container */}
@@ -25,26 +10,10 @@ export default function ArticleCard({ article }) {
           alt={article.title} 
           className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500 grayscale group-hover:grayscale-0" 
         />
-        
-        {/* Original Category Tag (Top Left) */}
+        {/* Category Tag (Hypothetical) */}
         <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm border border-[#27272a] px-3 py-1 rounded-md">
            <span className="text-[10px] font-bold text-[#10b981] uppercase tracking-wider">News</span>
         </div>
-
-        {/* NEW: Chainlink AI Verified Badge (Top Right) */}
-        {aiScore > 0 ? (
-          <div className="absolute top-3 right-3 bg-black/80 backdrop-blur-sm border border-[#10b981] px-3 py-1 rounded-md shadow-[0_0_10px_rgba(16,185,129,0.5)]">
-             <span className="text-[10px] font-bold text-[#10b981] tracking-wider">
-               🛡️ AI Score: {aiScore.toString()}/100
-             </span>
-          </div>
-        ) : (
-          <div className="absolute top-3 right-3 bg-black/80 backdrop-blur-sm border border-[#27272a] px-3 py-1 rounded-md">
-             <span className="text-[10px] font-bold text-zinc-400 tracking-wider animate-pulse">
-               ⏳ AI Auditing...
-             </span>
-          </div>
-        )}
       </div>
       
       <div className="p-6 flex flex-col flex-grow">
@@ -55,7 +24,6 @@ export default function ArticleCard({ article }) {
           {article.description}
         </p>
         
-        {/* Restored Original Link Bottom Section */}
         <div className="pt-4 border-t border-[#27272a] flex items-center justify-between mt-auto">
           <a
             href={article.url}
