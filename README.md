@@ -1,7 +1,7 @@
 # 🌐 Wrap-Up Evolved: Study Differently
 **A Decentralized Web3 AI Research & News Curation Platform — Built on Polkadot**
 
-[![Live Demo](https://img.shields.io/badge/Live%20App-wrap--up--evolved.vercel.app-10b981?style=for-the-badge&logo=vercel)](https://wrap-up-evolved.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Live%20App-wrap--up--polkadot.vercel.app-10b981?style=for-the-badge&logo=vercel)](https://wrap-up-polkadot.vercel.app/)
 [![Demo Video](https://img.shields.io/badge/Watch-Demo%20Video-FF0000?style=for-the-badge&logo=youtube)](https://youtu.be/gcb1c2ZSsmw)
 [![Polkadot](https://img.shields.io/badge/Chain-Polkadot%20Hub%20Testnet-E6007A?style=for-the-badge&logo=polkadot)](https://polkadot.network)
 
