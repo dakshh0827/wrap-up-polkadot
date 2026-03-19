@@ -13,7 +13,7 @@ import {
   Brain, FileText, LogOut, Wallet, Link2, Scale, Hexagon, ChevronDown, Zap
 } from "lucide-react";
 
-const API_BASE = 'https://wrap-up-evolved.onrender.com/api';
+const API_BASE = 'https://wrap-up-polkadot.onrender.com/api';
 
 export default function Navbar() {
   const { userPoints, displayName, setUserPoints, setDisplayName } = useArticleStore();
