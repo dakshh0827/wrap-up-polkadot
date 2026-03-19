@@ -21,7 +21,7 @@ import {
   Globe, Zap, X, ArrowRight, CheckCircle, Circle, Loader, Scale, Link2
 } from "lucide-react";
 
-const API_BASE = 'https://wrap-up-evolved.onrender.com/api';
+const API_BASE = 'https://wrap-up-polkadot.onrender.com/api';
 
 export default function ResearchLandingPage() {
   const [topic, setTopic] = useState("");
